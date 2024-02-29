@@ -1,39 +1,43 @@
-import Jetson.GPIO as GPIO
+import RPi.GPIO as GPIO
 import time
 
+GPIO.setmode(GPIO.BOARD)
+pwm_pin = 33
+pwm_en_pin = 23
 
-def set_PWM_pin(PIN_nmb):
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(PIN_nmb, GPIO.OUT)
-    xy_pwm = GPIO.PWM(PIN_nmb, 100)  # PWM object creation on pin 33, with 100Hz frequency
-    xy_pwm.start(0)
-    return xy_pwm
+frequency = 100
+duty_cycle = 0
+
+period = 1/frequency
+high_time = 0
+low_time = 0
 
 
-# Set duty cycle changes the duty cycle of a specific pwm_object
-def set_duty_cycle(duty_cycle, pwm_obj):
-    pwm_obj.ChangeDutyCycle(duty_cycle)
+GPIO.setup(pwm_pin, GPIO.OUT)
+GPIO.setup(pwm_en_pin, GPIO.OUT)
 
+def set_duty_cycle(new_duty_cycle):
+    global duty_cycle, high_time, low_time
+    duty_cycle = new_duty_cycle 
+    high_time = (duty_cycle /100)*period
+    low_time = period-high_time
+    GPIO.output(pwm_pin, GPIO.HIGH)
 
 def main():
-    # General GPIO setup
-    xy_pwm = set_PWM_pin(33)
-    # Jetson nano sample code to test pwm pin:
-    val = 25
-    incr = 5
-    print("PWM running. Press CTRL+C to exit.")
+    GPIO.output(pwm_en_pin, GPIO.HIGH)
     try:
         while True:
-            time.sleep(0.25)
-            if val >= 100:
-                incr = -incr
-            if val <= 0:
-                incr = -incr
-            val += incr
-            xy_pwm.ChangeDutyCycle(val)
-    finally:
-        xy_pwm.stop()
+            new_duty_cycle = float(input("Enter new duty_cycle: "))
+            set_duty_cycle(new_duty_cycle)
+
+            while high_time > 0 and low_time > 0:
+                GPIO.output(pwm_pin, GPIO.HIGH)
+                time.sleep(high_time)
+                GPIO.output(pwm_pin, GPIO.LOW)
+                time.sleep(low_time)
+    except KeyboardInterrupt:
         GPIO.cleanup()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
+
